@@ -2,7 +2,7 @@
   "mcpServers": {
     "jira": {
       "type": "http",
-      "url": "http://localhost:5000/mcp"
+      "url": "http://localhost:7777/mcp"
     }
   }
 }

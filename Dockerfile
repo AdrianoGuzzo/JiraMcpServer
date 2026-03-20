@@ -17,5 +17,8 @@ COPY --from=build /app/publish .
 ENV JIRA_BASE_URL=""
 ENV JIRA_EMAIL=""
 ENV JIRA_API_TOKEN=""
+ENV ASPNETCORE_URLS="http://+:7777"
+
+EXPOSE 7777
 
 ENTRYPOINT ["dotnet", "JiraMcpServer.dll"]
