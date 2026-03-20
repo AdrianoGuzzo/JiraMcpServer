@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet:*)",
+      "Bash(claude mcp:*)",
+      "mcp__jira__get_current_user",
+      "mcp__jira__search_issues"
+    ]
+  },
+  "enabledMcpjsonServers": [
+    "jira"
+  ]
+}
