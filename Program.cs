@@ -33,4 +33,5 @@ var app = builder.Build();
 
 app.MapMcp("/mcp");
 
-await app.RunAsync();
+var port = Environment.GetEnvironmentVariable("PORT") ?? "7777";
+await app.RunAsync($"http://0.0.0.0:{port}");
