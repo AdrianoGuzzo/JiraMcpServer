@@ -1,5 +1,7 @@
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using JiraMcpServer.Configuration;
 
 namespace JiraMcpServer.Services;
 
@@ -43,28 +45,41 @@ public class JiraClient(HttpClient httpClient)
 
     private async Task<string> GetJsonAsync(string path)
     {
-        var response = await httpClient.GetAsync(path);
+        var request = CreateRequest(HttpMethod.Get, path);
+        var response = await httpClient.SendAsync(request);
         return await ReadResponseAsync(response);
     }
 
     private async Task<string> PostJsonAsync(string path, object body)
     {
-        var json = JsonSerializer.Serialize(body);
-        var content = new StringContent(json, Encoding.UTF8, "application/json");
-        var response = await httpClient.PostAsync(path, content);
+        var request = CreateRequest(HttpMethod.Post, path);
+        request.Content = new StringContent(
+            JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+        var response = await httpClient.SendAsync(request);
         return await ReadResponseAsync(response);
     }
 
     private async Task<string> PutJsonAsync(string path, object body)
     {
-        var json = JsonSerializer.Serialize(body);
-        var content = new StringContent(json, Encoding.UTF8, "application/json");
-        var response = await httpClient.PutAsync(path, content);
+        var request = CreateRequest(HttpMethod.Put, path);
+        request.Content = new StringContent(
+            JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+        var response = await httpClient.SendAsync(request);
 
         if (response.StatusCode == System.Net.HttpStatusCode.NoContent)
             return "{}";
 
         return await ReadResponseAsync(response);
+    }
+
+    private static HttpRequestMessage CreateRequest(HttpMethod method, string path)
+    {
+        var options = JiraOptionsAccessor.Current;
+        var baseUrl = options.BaseUrl.TrimEnd('/') + "/";
+        var request = new HttpRequestMessage(method, new Uri(new Uri(baseUrl), path));
+        request.Headers.Authorization = AuthenticationHeaderValue.Parse(options.GetBasicAuthHeader());
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        return request;
     }
 
     private static async Task<string> ReadResponseAsync(HttpResponseMessage response)
