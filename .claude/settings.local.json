@@ -4,7 +4,8 @@
       "Bash(dotnet:*)",
       "Bash(claude mcp:*)",
       "mcp__jira__get_current_user",
-      "mcp__jira__search_issues"
+      "mcp__jira__search_issues",
+      "Bash(git checkout:*)"
     ]
   },
   "enabledMcpjsonServers": [
