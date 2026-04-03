@@ -12,22 +12,29 @@ dotnet publish        # Publish for deployment
 
 No test framework is currently configured.
 
-## Environment Variables
+## Authentication
 
-The application requires these three variables at runtime:
+The server supports **multi-tenant** authentication via HTTP headers per MCP session. Credentials are passed by the MCP client on the initial connection request.
 
-- `JIRA_BASE_URL` — Base URL of the Jira instance (e.g., `https://yourorg.atlassian.net`)
-- `JIRA_EMAIL` — Jira account email
-- `JIRA_API_TOKEN` — Jira API token
+### Required HTTP Headers
+
+- `X-Jira-Email` — Jira account email (required)
+- `X-Jira-Api-Token` — Jira API token (required)
+- `X-Jira-Base-Url` — Base URL of the Jira instance (optional, overrides env var)
+
+### Environment Variables
+
+- `JIRA_BASE_URL` — Default base URL for the Jira instance (e.g., `https://yourorg.atlassian.net`). Used when `X-Jira-Base-Url` header is not provided.
+- `PORT` — Server port (default: `7777`)
 
 ## Architecture
 
-This is a **Model Context Protocol (MCP) server** that bridges Jira's REST API to MCP clients (like Claude) over stdio transport.
+This is a **Model Context Protocol (MCP) server** that bridges Jira's REST API to MCP clients (like Claude) over HTTP transport.
 
 ### Data Flow
 
 ```
-MCP Client (Claude) ←→ stdio ←→ MCP Server (Program.cs)
+MCP Client (Claude) ←→ HTTP ←→ MCP Server (Program.cs)
                                        ↓
                               Tools/ (IssueTools, ProjectTools, UserTools)
                                        ↓
@@ -38,7 +45,7 @@ MCP Client (Claude) ←→ stdio ←→ MCP Server (Program.cs)
 
 ### Key Design Points
 
-- **Program.cs** bootstraps a .NET host, configures `HttpClient` with Basic Auth (email + API token), and registers the MCP server with stdio transport. Tool methods are auto-discovered from the assembly via reflection.
+- **Program.cs** bootstraps a .NET host, configures the MCP server with HTTP transport, and extracts per-session Jira credentials from HTTP headers via `ConfigureSessionOptions`. Credentials are stored in `AsyncLocal` (`JiraOptionsAccessor`) so they persist for the entire MCP session. Tool methods are auto-discovered from the assembly via reflection.
 
 - **`Services/JiraClient.cs`** is the sole HTTP layer — all Jira API calls go through it. No tools call Jira directly.
 
