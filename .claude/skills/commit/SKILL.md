@@ -101,10 +101,7 @@ If no message was provided, generate one based on the diff:
 -   Body: explain **why**, not **what** (the diff shows the what)
 -   Always append the co-author trailer:
 
-```{=html}
-<!-- -->
-```
-    Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+    Co-Authored-By: Claude <noreply@anthropic.com>
 
 **Example:**
 
@@ -113,7 +110,7 @@ If no message was provided, generate one based on the diff:
     After a successful login the user is redirected to the page they
     originally tried to access instead of always landing on /.
 
-    Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+    Co-Authored-By: Claude <noreply@anthropic.com>
 
 ------------------------------------------------------------------------
 
@@ -127,7 +124,7 @@ git commit -m "$(cat <<'EOF'
 
 <body>
 
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+Co-Authored-By: Claude <noreply@anthropic.com>
 EOF
 )"
 ```
@@ -154,7 +151,7 @@ git push
 
 After pushing, generate a PR description in markdown
 
-Run `git diff main...HEAD` (or the base branch if different) to understand all changes in the branch, then produce:
+Detect the default branch (`git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@'`) and run `git diff <default-branch>...HEAD` to understand all changes in the branch, then produce:
 
 ```markdown
 ## Summary
@@ -173,15 +170,22 @@ Guidelines:
 - Test plan items are specific and actionable (e.g. "Unauthenticated → `/weather` redirects to `/login?ReturnUrl=%2Fweather`")
 - Aim for 3–6 summary bullets
 
-To submit your changes for review, you must create a Pull Request using the GitHub CLI.
+Create the Pull Request non-interactively using the generated title and description:
 
-After pushing your branch to the remote repository, run the following command:
+```bash
+gh pr create --title "<subject>" --body "$(cat <<'EOF'
+## Summary
 
-gh pr create
+- <bullet>
 
-This command will guide you through creating the Pull Request interactively, allowing you to select the base branch (main) and provide the title and description.
+## Test plan
 
-Make sure the Pull Request targets the main branch.
+- [ ] <check>
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+EOF
+)"
+```
 
 ------------------------------------------------------------------------
 
