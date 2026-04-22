@@ -113,6 +113,7 @@ public class IssueTools(JiraClient jira)
         var paragraphLines = new List<string>();
         var listItems = new List<string>();
         var codeFenceLines = new List<string>();
+        var tableLines = new List<string>();
         var codeFenceLanguage = "";
         var inCodeFence = false;
         var listIsOrdered = false;
@@ -161,6 +162,55 @@ public class IssueTools(JiraClient jira)
             listItems.Clear();
         }
 
+        void FlushTable()
+        {
+            if (tableLines.Count == 0) return;
+            var dataRows = tableLines
+                .Where(r => !r.Trim().Trim('|').All(c => c == '-' || c == ':' || c == ' '))
+                .ToList();
+            if (dataRows.Count == 0) { tableLines.Clear(); return; }
+            var rows = dataRows
+                .Select(row => row.Trim().Trim('|').Split('|').Select(c => c.Trim()).ToList())
+                .ToList();
+            var tableRows = new List<object>();
+            for (var rowIdx = 0; rowIdx < rows.Count; rowIdx++)
+            {
+                var isHeader = rowIdx == 0;
+                var cellType = isHeader ? "tableHeader" : "tableCell";
+                var cells = rows[rowIdx].Select(cellText =>
+                    (object)new Dictionary<string, object>
+                    {
+                        ["type"] = cellType,
+                        ["attrs"] = new Dictionary<string, object>(),
+                        ["content"] = new List<object>
+                        {
+                            new Dictionary<string, object>
+                            {
+                                ["type"] = "paragraph",
+                                ["content"] = ParseInline(cellText)
+                            }
+                        }
+                    }
+                ).ToList();
+                tableRows.Add(new Dictionary<string, object>
+                {
+                    ["type"] = "tableRow",
+                    ["content"] = cells
+                });
+            }
+            blocks.Add(new Dictionary<string, object>
+            {
+                ["type"] = "table",
+                ["attrs"] = new Dictionary<string, object>
+                {
+                    ["isNumberColumnEnabled"] = false,
+                    ["layout"] = "default"
+                },
+                ["content"] = tableRows
+            });
+            tableLines.Clear();
+        }
+
         foreach (var rawLine in lines)
         {
             if (inCodeFence)
@@ -194,6 +244,7 @@ public class IssueTools(JiraClient jira)
             {
                 FlushParagraph();
                 FlushList();
+                FlushTable();
                 codeFenceLanguage = line.Length > 3 ? line[3..].Trim() : "";
                 inCodeFence = true;
                 continue;
@@ -203,6 +254,7 @@ public class IssueTools(JiraClient jira)
             {
                 FlushParagraph();
                 FlushList();
+                FlushTable();
                 continue;
             }
 
@@ -211,6 +263,7 @@ public class IssueTools(JiraClient jira)
             {
                 FlushParagraph();
                 FlushList();
+                FlushTable();
                 var level = headingMatch.Groups[1].Value.Length;
                 var headingText = headingMatch.Groups[2].Value;
                 blocks.Add(new Dictionary<string, object>
@@ -225,6 +278,7 @@ public class IssueTools(JiraClient jira)
             if (line.StartsWith("- ") || line.StartsWith("* "))
             {
                 FlushParagraph();
+                FlushTable();
                 if (listItems.Count > 0 && listIsOrdered) FlushList();
                 listIsOrdered = false;
                 listItems.Add(line[2..]);
@@ -235,13 +289,23 @@ public class IssueTools(JiraClient jira)
             if (orderedMatch.Success)
             {
                 FlushParagraph();
+                FlushTable();
                 if (listItems.Count > 0 && !listIsOrdered) FlushList();
                 listIsOrdered = true;
                 listItems.Add(orderedMatch.Groups[1].Value);
                 continue;
             }
 
+            if (line.TrimStart().StartsWith("|"))
+            {
+                FlushParagraph();
+                FlushList();
+                tableLines.Add(line);
+                continue;
+            }
+
             FlushList();
+            FlushTable();
             paragraphLines.Add(line);
         }
 
@@ -250,6 +314,7 @@ public class IssueTools(JiraClient jira)
 
         FlushParagraph();
         FlushList();
+        FlushTable();
 
         if (blocks.Count == 0)
             blocks.Add(new Dictionary<string, object>
