@@ -17,7 +17,7 @@ public class IssueTools(JiraClient jira)
         [Description("Project key, e.g. PROJ")] string projectKey,
         [Description("Issue summary / title")] string summary,
         [Description("Issue type name, e.g. Bug, Story, Task")] string issueType,
-        [Description("Optional description. Supports markdown: **bold**, `code`, ```lang\\nblock```, - bullets, # headings.")] string? description = null,
+        [Description("Optional description. Supports markdown: **bold**, `code`, ```lang\\nblock```, - bullets, # headings, | tables |.")] string? description = null,
         [Description("Optional priority name, e.g. High, Medium, Low")] string? priority = null,
         [Description("Optional assignee account ID")] string? assigneeAccountId = null)
     {
@@ -44,7 +44,7 @@ public class IssueTools(JiraClient jira)
     public Task<string> UpdateIssue(
         [Description("The issue key, e.g. PROJ-123")] string issueKey,
         [Description("New summary")] string? summary = null,
-        [Description("New description. Supports markdown: **bold**, `code`, ```lang\\nblock```, - bullets, # headings.")] string? description = null,
+        [Description("New description. Supports markdown: **bold**, `code`, ```lang\\nblock```, - bullets, # headings, | tables |.")] string? description = null,
         [Description("New priority name")] string? priority = null,
         [Description("New assignee account ID")] string? assigneeAccountId = null)
     {
@@ -86,7 +86,7 @@ public class IssueTools(JiraClient jira)
     [McpServerTool, Description("Adds a comment to a Jira issue. Body supports markdown formatting.")]
     public Task<string> AddComment(
         [Description("The issue key, e.g. PROJ-123")] string issueKey,
-        [Description("Comment body. Supports markdown: **bold**, `code`, ```lang\\nblock```, - bullets, # headings.")] string body) =>
+        [Description("Comment body. Supports markdown: **bold**, `code`, ```lang\\nblock```, - bullets, # headings, | tables |.")] string body) =>
         jira.AddCommentAsync(issueKey, new { body = BuildAdfDocument(body) });
 
     [McpServerTool, Description("Gets all comments for a Jira issue.")]
@@ -166,7 +166,8 @@ public class IssueTools(JiraClient jira)
         {
             if (tableLines.Count == 0) return;
             var dataRows = tableLines
-                .Where(r => !r.Trim().Trim('|').All(c => c == '-' || c == ':' || c == ' '))
+                .Where(r => !r.Trim().Trim('|').Split('|')
+                    .All(cell => cell.Trim().All(c => c == '-' || c == ':' || c == ' ')))
                 .ToList();
             if (dataRows.Count == 0) { tableLines.Clear(); return; }
             var rows = dataRows
@@ -181,7 +182,6 @@ public class IssueTools(JiraClient jira)
                     (object)new Dictionary<string, object>
                     {
                         ["type"] = cellType,
-                        ["attrs"] = new Dictionary<string, object>(),
                         ["content"] = new List<object>
                         {
                             new Dictionary<string, object>
