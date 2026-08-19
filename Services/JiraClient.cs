@@ -29,6 +29,12 @@ public class JiraClient(HttpClient httpClient)
     public Task<string> GetCommentsAsync(string issueKey) =>
         GetJsonAsync($"issue/{issueKey}/comment");
 
+    public Task<string> GetWorklogsAsync(string issueKey) =>
+        GetJsonAsync($"issue/{issueKey}/worklog");
+
+    public Task<string> AddWorklogAsync(string issueKey, object body) =>
+        PostJsonAsync($"issue/{issueKey}/worklog", body);
+
     public Task<string> ListProjectsAsync() =>
         GetJsonAsync("project");
 
