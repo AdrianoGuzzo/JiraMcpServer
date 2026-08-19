@@ -94,7 +94,7 @@ public class IssueTools(JiraClient jira)
         [Description("The issue key, e.g. PROJ-123")] string issueKey) =>
         jira.GetCommentsAsync(issueKey);
 
-    private static object BuildAdfDocument(string text)
+    internal static object BuildAdfDocument(string text)
     {
         var content = ParseBlocks(text);
         return new Dictionary<string, object>
