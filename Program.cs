@@ -1,32 +1,43 @@
 using JiraMcpServer.Configuration;
 using JiraMcpServer.Services;
-using Microsoft.Extensions.DependencyInjection;
 
-var options = new JiraOptions
-{
-    BaseUrl  = Environment.GetEnvironmentVariable("JIRA_BASE_URL")
-               ?? throw new InvalidOperationException("JIRA_BASE_URL environment variable is required."),
-    Email    = Environment.GetEnvironmentVariable("JIRA_EMAIL")
-               ?? throw new InvalidOperationException("JIRA_EMAIL environment variable is required."),
-    ApiToken = Environment.GetEnvironmentVariable("JIRA_API_TOKEN")
-               ?? throw new InvalidOperationException("JIRA_API_TOKEN environment variable is required."),
-};
+var fallbackBaseUrl = Environment.GetEnvironmentVariable("JIRA_BASE_URL");
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddSingleton(options);
-
-builder.Services.AddHttpClient<JiraClient>((sp, client) =>
-{
-    var opt = sp.GetRequiredService<JiraOptions>();
-    client.BaseAddress = new Uri(opt.BaseUrl.TrimEnd('/') + "/");
-    client.DefaultRequestHeaders.Add("Authorization", opt.GetBasicAuthHeader());
-    client.DefaultRequestHeaders.Add("Accept", "application/json");
-});
+builder.Services.AddHttpClient<JiraClient>();
 
 builder.Services
     .AddMcpServer()
-    .WithHttpTransport()
+    .WithHttpTransport(options =>
+    {
+        options.PerSessionExecutionContext = true;
+
+        options.ConfigureSessionOptions = (ctx, sessionOptions, ct) =>
+        {
+            var baseUrl = ctx.Request.Headers["X-Jira-Base-Url"].FirstOrDefault()
+                          ?? fallbackBaseUrl
+                          ?? throw new InvalidOperationException(
+                              "Jira base URL must be provided via X-Jira-Base-Url header or JIRA_BASE_URL environment variable.");
+
+            var email = ctx.Request.Headers["X-Jira-Email"].FirstOrDefault()
+                        ?? throw new InvalidOperationException(
+                            "X-Jira-Email header is required.");
+
+            var apiToken = ctx.Request.Headers["X-Jira-Api-Token"].FirstOrDefault()
+                           ?? throw new InvalidOperationException(
+                               "X-Jira-Api-Token header is required.");
+
+            JiraOptionsAccessor.Current = new JiraOptions
+            {
+                BaseUrl = baseUrl,
+                Email = email,
+                ApiToken = apiToken,
+            };
+
+            return Task.CompletedTask;
+        };
+    })
     .WithToolsFromAssembly();
 
 var app = builder.Build();
